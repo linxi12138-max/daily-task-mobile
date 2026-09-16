@@ -3,116 +3,574 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#4257b2">
+  <meta name="theme-color" content="#7b6ee5">
+  <meta name="description" content="随机抽取任务主人，完成三项今日小目标并领取奖励。">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%237b6ee5'/%3E%3Cpath d='M18 33l9 9 19-22' fill='none' stroke='white' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <title>每日任务</title>
   <style>
     :root {
-      --ink: #1d2451;
-      --muted: #68729d;
-      --brand: #5265cf;
-      --brand-dark: #3e4fb0;
-      --paper: #ffffff;
-      --canvas: #f2f4ff;
-      --mint: #dcf6e8;
-      --gold: #fff1bb;
-      --line: #e3e6f6;
+      color-scheme: light;
+      --ink: #2c2a45;
+      --muted: #716e87;
+      --brand: #7b6ee5;
+      --brand-dark: #6254cb;
+      --brand-soft: #eeeaff;
+      --pink: #e96f9c;
+      --pink-soft: #fff0f5;
+      --blue: #5f8fd8;
+      --blue-soft: #edf6ff;
+      --mint: #dff6e9;
+      --mint-ink: #23724c;
+      --gold: #fff2c8;
+      --gold-ink: #8a6500;
+      --paper: rgba(255, 255, 255, .94);
+      --canvas: #f7f5ff;
+      --line: #e8e4f4;
+      --shadow: 0 18px 48px rgba(76, 67, 132, .12);
     }
 
     * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
       min-height: 100vh;
       color: var(--ink);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
-      background: radial-gradient(circle at 15% 0%, #dfe5ff 0, transparent 34rem), var(--canvas);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+      background:
+        radial-gradient(circle at 8% 0%, rgba(232, 218, 255, .9) 0, transparent 30rem),
+        radial-gradient(circle at 100% 18%, rgba(213, 237, 255, .75) 0, transparent 27rem),
+        var(--canvas);
     }
+
+    body.modal-open { overflow: hidden; }
+
+    button,
+    input { font: inherit; }
+
+    button { -webkit-tap-highlight-color: transparent; }
 
     main {
-      width: min(100%, 680px);
+      width: min(100%, 720px);
       margin: 0 auto;
-      padding: 28px 18px calc(32px + env(safe-area-inset-bottom));
+      padding: 24px 18px calc(40px + env(safe-area-inset-bottom));
     }
 
-    .hero { padding: 8px 4px 22px; }
-    .eyebrow { color: var(--brand); font-weight: 800; font-size: 13px; letter-spacing: .08em; }
-    h1 { margin: 6px 0 8px; font-size: clamp(30px, 8vw, 42px); letter-spacing: -.04em; }
-    .sub { margin: 0; color: var(--muted); line-height: 1.65; }
+    .hero {
+      padding: 12px 4px 18px;
+      text-align: left;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--brand-dark);
+      font-size: .82rem;
+      font-weight: 900;
+      letter-spacing: .1em;
+    }
+
+    .eyebrow-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--pink), var(--brand));
+      box-shadow: 0 0 0 5px rgba(123, 110, 229, .1);
+    }
+
+    h1 {
+      margin: 8px 0 8px;
+      font-size: clamp(2rem, 9vw, 3rem);
+      line-height: 1.14;
+      letter-spacing: -.04em;
+    }
+
+    .sub {
+      margin: 0;
+      max-width: 32rem;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+
+    .today {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 6px 11px;
+      border-radius: 999px;
+      color: #625e78;
+      background: rgba(255, 255, 255, .72);
+      font-size: .82rem;
+      font-weight: 700;
+    }
 
     .card {
       margin-top: 16px;
       padding: 22px;
       border: 1px solid rgba(255, 255, 255, .9);
-      border-radius: 24px;
-      background: rgba(255, 255, 255, .92);
-      box-shadow: 0 12px 35px rgba(70, 83, 155, .11);
+      border-radius: 26px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
     }
 
-    .topline { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .label { color: var(--muted); font-size: 14px; font-weight: 700; }
-    .person { margin: 8px 0 0; font-size: 27px; font-weight: 850; }
-    .badge { padding: 7px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; }
-    .badge.instant { background: var(--mint); color: #16734b; }
-    .badge.points { background: var(--gold); color: #986b00; }
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
 
-    button {
+    .section-kicker {
+      margin: 0 0 2px;
+      color: var(--brand-dark);
+      font-size: .82rem;
+      font-weight: 850;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.24rem;
+      line-height: 1.35;
+    }
+
+    .section-note {
+      max-width: 11rem;
+      color: var(--muted);
+      font-size: .82rem;
+      line-height: 1.5;
+      text-align: right;
+    }
+
+    .person-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .person-option {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 11px;
       width: 100%;
-      min-height: 52px;
-      border: 0;
+      min-height: 76px;
+      padding: 12px;
+      border: 2px solid var(--line);
+      border-radius: 19px;
+      color: var(--ink);
+      background: #fff;
+      box-shadow: none;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color .2s ease, background .2s ease, transform .2s ease, box-shadow .2s ease;
+    }
+
+    .person-option:hover { transform: translateY(-2px); }
+    .person-option:active { transform: scale(.98); }
+
+    .person-option[aria-checked="true"] {
+      border-color: var(--option-accent);
+      background: var(--option-soft);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--option-accent) 14%, transparent);
+    }
+
+    .person-option[data-person="朱子怡"] {
+      --option-accent: var(--pink);
+      --option-soft: var(--pink-soft);
+    }
+
+    .person-option[data-person="小王"] {
+      --option-accent: var(--blue);
+      --option-soft: var(--blue-soft);
+    }
+
+    .person-avatar {
+      display: grid;
+      flex: 0 0 auto;
+      width: 48px;
+      height: 48px;
+      place-items: center;
       border-radius: 16px;
       color: white;
-      background: var(--brand);
-      box-shadow: 0 8px 18px rgba(82, 101, 207, .28);
-      font: inherit;
-      font-weight: 800;
-      cursor: pointer;
-      transition: transform .16s ease, background .16s ease;
+      background: var(--option-accent);
+      font-weight: 900;
+      box-shadow: 0 7px 15px color-mix(in srgb, var(--option-accent) 25%, transparent);
     }
 
-    button:active { transform: scale(.98); }
-    button:hover { background: var(--brand-dark); }
-    button.secondary { color: var(--brand); background: #edf0ff; box-shadow: none; }
-    button:disabled { cursor: not-allowed; color: #7f87ac; background: #e5e8f6; box-shadow: none; }
+    .person-copy { min-width: 0; }
+    .person-copy strong { display: block; font-size: 1rem; line-height: 1.35; }
+    .person-copy span { display: block; margin-top: 3px; color: var(--muted); font-size: .78rem; line-height: 1.4; }
 
-    .tasks { display: grid; gap: 10px; margin: 18px 0; }
+    .selected-check {
+      position: absolute;
+      top: 8px;
+      right: 9px;
+      display: grid;
+      width: 22px;
+      height: 22px;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      background: var(--option-accent);
+      font-size: .78rem;
+      font-weight: 900;
+      opacity: 0;
+      transform: scale(.65);
+      transition: opacity .18s ease, transform .18s ease;
+    }
+
+    .person-option[aria-checked="true"] .selected-check {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      width: 100%;
+      min-height: 58px;
+      padding: 12px 18px;
+      border: 0;
+      border-radius: 18px;
+      color: white;
+      background: linear-gradient(135deg, #8a7cf0, #6d60d7);
+      box-shadow: 0 10px 22px rgba(99, 84, 203, .25);
+      font-weight: 850;
+      cursor: pointer;
+      transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+    }
+
+    .button:hover { box-shadow: 0 13px 27px rgba(99, 84, 203, .31); }
+    .button:active { transform: scale(.98); }
+    .button:disabled { cursor: not-allowed; opacity: .66; box-shadow: none; }
+
+    .button.secondary {
+      color: var(--brand-dark);
+      background: var(--brand-soft);
+      box-shadow: none;
+    }
+
+    .button.ghost {
+      color: #7d6980;
+      border: 1px solid #eadfe9;
+      background: #fff8fb;
+      box-shadow: none;
+    }
+
+    .spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, .45);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin .75s linear infinite;
+    }
+
+    .button.is-loading .spinner { display: block; }
+
+    .plan-card { overflow: hidden; }
+    .plan-card.plan-enter { animation: cardIn .42s cubic-bezier(.2, .8, .2, 1); }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .label { color: var(--muted); font-size: .86rem; font-weight: 750; }
+    .person { margin-top: 3px; font-size: 1.75rem; line-height: 1.25; font-weight: 900; }
+
+    .badge,
+    .reward-state {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: .76rem;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .badge.instant { color: #9a3f67; background: #ffe4ef; }
+    .badge.points { color: var(--gold-ink); background: var(--gold); }
+
+    .progress-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: .84rem;
+      font-weight: 750;
+    }
+
+    .progress-track {
+      height: 8px;
+      margin-top: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #ece9f6;
+    }
+
+    .progress-bar {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--pink), var(--brand));
+      transition: width .28s ease;
+    }
+
+    .tasks {
+      display: grid;
+      gap: 11px;
+      margin: 18px 0;
+    }
+
     .task {
       display: flex;
-      gap: 12px;
       align-items: flex-start;
-      padding: 13px 14px;
+      gap: 13px;
+      min-height: 58px;
+      padding: 14px 15px;
       border: 1px solid var(--line);
-      border-radius: 15px;
-      background: #fbfbff;
-      line-height: 1.45;
+      border-radius: 17px;
+      background: #fdfcff;
+      cursor: pointer;
+      transition: color .2s ease, background .2s ease, border-color .2s ease, transform .2s ease;
     }
-    .task input { width: 20px; height: 20px; margin: 0; accent-color: var(--brand); flex: 0 0 auto; }
-    .task:has(input:checked) { color: #66709d; text-decoration: line-through; background: #f5f6fc; }
 
-    .reward { margin: 18px 0; padding: 16px; border-radius: 17px; background: #f0f2ff; }
-    .reward strong { display: block; margin-bottom: 5px; color: var(--brand-dark); font-size: 14px; }
-    .reward p { margin: 0; line-height: 1.55; font-weight: 750; }
-    .points-info { display: flex; gap: 12px; align-items: center; margin: 16px 0; padding: 15px; border-radius: 16px; background: #fff9df; }
-    .points-num { color: #a06f00; font-size: 26px; font-weight: 900; }
-    .points-copy { color: #786534; line-height: 1.5; font-size: 13px; }
+    .task:active { transform: scale(.99); }
+    .task input { width: 23px; height: 23px; margin: 1px 0 0; accent-color: var(--brand); flex: 0 0 auto; }
+    .task-text { line-height: 1.6; transition: color .2s ease; }
 
-    .hidden { display: none; }
-    #status { min-height: 24px; margin: 14px 2px 0; color: #56628e; text-align: center; font-size: 14px; }
-    footer { margin-top: 24px; color: #8890b5; text-align: center; font-size: 12px; }
+    .task.is-complete {
+      color: #9793a7;
+      border-color: #e8e6ed;
+      background: #f4f3f7;
+    }
+
+    .task.is-complete .task-text { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+
+    .reward-card {
+      position: relative;
+      margin: 18px 0;
+      padding: 17px;
+      overflow: hidden;
+      border: 1px solid #e2dcff;
+      border-radius: 19px;
+      background: linear-gradient(135deg, #f4f1ff, #fff8fc);
+      transition: background .25s ease, border-color .25s ease, transform .25s ease;
+    }
+
+    .reward-card.is-claimed {
+      border-color: #bfe8d0;
+      background: linear-gradient(135deg, #e9f9f0, #f8fffb);
+    }
+
+    .reward-card.reward-pop { animation: rewardPop .52s cubic-bezier(.2, .8, .2, 1); }
+
+    .reward-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .reward-head strong { color: var(--brand-dark); font-size: .88rem; }
+    .reward-state { color: #7a7191; background: rgba(255, 255, 255, .76); }
+    .reward-card.is-claimed .reward-state { color: var(--mint-ink); background: var(--mint); }
+    .reward-card p { margin: 0; font-weight: 800; line-height: 1.65; }
+
+    .points-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 13px;
+      padding-top: 12px;
+      border-top: 1px dashed #dfd6aa;
+      color: #76632b;
+      font-size: .86rem;
+    }
+
+    .points-info strong { color: var(--gold-ink); font-size: 1.28rem; }
+
+    #status {
+      min-height: 26px;
+      margin: 13px 4px 0;
+      color: #5f5980;
+      font-size: .88rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .plan-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    footer {
+      margin-top: 24px;
+      color: #8a879b;
+      font-size: .78rem;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      padding-top: calc(20px + env(safe-area-inset-top));
+      padding-bottom: calc(20px + env(safe-area-inset-bottom));
+      background: rgba(39, 34, 62, .56);
+      opacity: 0;
+      transition: opacity .24s ease;
+    }
+
+    .modal.is-open { opacity: 1; }
+
+    .modal-dialog {
+      position: relative;
+      width: min(100%, 380px);
+      max-height: 90vh;
+      padding: 18px 18px 22px;
+      overflow: auto;
+      border: 1px solid rgba(255, 255, 255, .82);
+      border-radius: 28px;
+      background: #fff;
+      box-shadow: 0 28px 70px rgba(28, 23, 50, .28);
+      text-align: center;
+      transform: translateY(18px) scale(.96);
+      transition: transform .26s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    .modal.is-open .modal-dialog { transform: translateY(0) scale(1); }
+
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 2;
+      display: grid;
+      width: 44px;
+      height: 44px;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      color: #625e73;
+      background: rgba(255, 255, 255, .9);
+      box-shadow: 0 5px 15px rgba(49, 42, 76, .12);
+      font-size: 1.35rem;
+      cursor: pointer;
+    }
+
+    .modal-image-frame {
+      aspect-ratio: 1;
+      overflow: hidden;
+      border-radius: 21px;
+      background: #f5f3fb;
+    }
+
+    .modal-image-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .modal-title { margin: 17px 0 5px; font-size: 1.36rem; line-height: 1.35; }
+    .modal-message { margin: 0; color: var(--muted); line-height: 1.65; }
+
+    .hidden { display: none !important; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes rewardPop {
+      0% { transform: scale(.98); }
+      45% { transform: scale(1.025); }
+      100% { transform: scale(1); }
+    }
+
+    @media (max-width: 520px) {
+      main { padding-inline: 14px; }
+      .card { padding: 18px; border-radius: 23px; }
+      .section-head { display: block; }
+      .section-note { max-width: none; margin-top: 4px; text-align: left; }
+      .person-option { min-height: 82px; padding: 11px; }
+      .person-avatar { width: 44px; height: 44px; border-radius: 14px; }
+      .person-copy span { font-size: .74rem; }
+      .plan-actions { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 360px) {
+      .person-options { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
   </style>
 </head>
 <body>
   <main>
-    <section class="hero">
-      <div class="eyebrow">DAILY PLAN</div>
+    <header class="hero">
+      <div class="eyebrow"><span class="eyebrow-dot"></span>DAILY PLAN</div>
       <h1>今天做什么？</h1>
       <p class="sub">抽取一位任务主人，完成三项小目标，再收下属于你的奖励。</p>
+      <span id="todayLabel" class="today"></span>
+    </header>
+
+    <section class="card" aria-labelledby="pickerTitle">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">选择任务主人</p>
+          <h2 id="pickerTitle">今天轮到谁？</h2>
+        </div>
+        <span class="section-note">可手动选择，也可以随机抽取</span>
+      </div>
+
+      <div class="person-options" role="radiogroup" aria-label="任务主人">
+        <button class="person-option" type="button" role="radio" aria-checked="false" data-person="朱子怡">
+          <span class="person-avatar">朱</span>
+          <span class="person-copy"><strong>朱子怡</strong><span>日常轻任务 · 情侣互动</span></span>
+          <span class="selected-check" aria-hidden="true">✓</span>
+        </button>
+        <button class="person-option" type="button" role="radio" aria-checked="false" data-person="小王">
+          <span class="person-avatar">王</span>
+          <span class="person-copy"><strong>小王</strong><span>编程学习 · 运动复盘</span></span>
+          <span class="selected-check" aria-hidden="true">✓</span>
+        </button>
+      </div>
+
+      <button id="drawButton" class="button" type="button">
+        <span class="button-label">随机抽取任务主人</span>
+        <span class="spinner" aria-hidden="true"></span>
+      </button>
     </section>
 
-    <section class="card">
-      <button id="drawButton" type="button">抽取今日任务</button>
-    </section>
-
-    <section id="planCard" class="card hidden" aria-live="polite">
+    <section id="planCard" class="card plan-card hidden" aria-live="polite">
       <div class="topline">
         <div>
           <div class="label">今天的任务主人</div>
@@ -121,38 +579,93 @@
         <span id="rewardBadge" class="badge"></span>
       </div>
 
+      <div class="progress-row">
+        <span>今日小目标</span>
+        <span id="progressText">已完成 0 / 3</span>
+      </div>
+      <div class="progress-track" aria-hidden="true"><span id="progressBar" class="progress-bar"></span></div>
+
       <div id="tasks" class="tasks"></div>
 
-      <div class="reward">
-        <strong>完成任务后的奖励</strong>
-        <p id="rewardText"></p>
-      </div>
-
-      <div id="pointsPanel" class="hidden">
-        <div class="points-info">
-          <div id="pointsNumber" class="points-num">0 分</div>
-          <div class="points-copy">当前累计积分<br>每完成一项可获得 10 分</div>
+      <div id="rewardCard" class="reward-card">
+        <div class="reward-head">
+          <strong>完成任务后的奖励</strong>
+          <span id="rewardState" class="reward-state">待领取</span>
         </div>
-        <button id="scoreButton" type="button">按已完成任务计算积分</button>
+        <p id="rewardText"></p>
+        <div id="pointsInfo" class="points-info hidden">
+          <span>当前累计积分</span>
+          <strong id="pointsNumber">0 分</strong>
+        </div>
       </div>
 
-      <div id="instantPanel" class="hidden">
-        <button id="claimButton" type="button">我已完成三项任务，领取奖励</button>
-      </div>
+      <button id="claimButton" class="button" type="button">我已完成三项任务，领取奖励</button>
+      <p id="status" role="status" aria-live="polite"></p>
 
-      <p id="status"></p>
-      <button id="redrawButton" class="secondary" type="button">重新抽取</button>
+      <div class="plan-actions">
+        <button id="resetButton" class="button ghost" type="button">重置今日任务</button>
+        <button id="redrawButton" class="button secondary" type="button">重新随机抽取</button>
+      </div>
     </section>
 
-    <footer>积分仅保存在当前手机浏览器中。</footer>
+    <footer>任务进度、奖励状态和积分只保存在当前手机浏览器中。</footer>
   </main>
+
+  <div id="characterModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMessage">
+      <button id="modalClose" class="modal-close" type="button" aria-label="关闭弹窗">×</button>
+      <div class="modal-image-frame"><img id="modalImage" alt=""></div>
+      <h2 id="modalTitle" class="modal-title"></h2>
+      <p id="modalMessage" class="modal-message"></p>
+    </div>
+  </div>
 
   <script>
     const people = {
+      "朱子怡": {
+        taskGroups: {
+          "日常轻任务": [
+            "背诵 60 个英语单词",
+            "完成今天的做饭目标",
+            "动脑子练习 20 分钟",
+            "整理复盘当天的工作内容",
+            "锻炼或散步 20 分钟",
+            "好好吃三餐，不随便凑合吃饭",
+            "整理桌面/房间小区域",
+            "拉伸10分钟/简单活动身体",
+            "做5分钟简单放松冥想"
+          ],
+          "情侣互动任务": [
+            "和我分享一件今天开心的小事",
+            "说一句甜甜的碎碎念",
+            "拍一张今日自拍发给我",
+            "挑一首歌/一部电影分享给我",
+            "走心地夸我一句（随便什么角度）",
+            "想想一个想和我一起去的小地方，并进行具体描述"
+          ]
+        },
+        rewards: [
+          { label: "今天不洗袜子", type: "instant" },
+          { label: "我夸你一大段彩虹屁", type: "instant" },
+          { label: "无条件听你吐槽15分钟,我不反驳", type: "instant" },
+          { label: "帮你捏肩/揉脖子10分钟", type: "instant" },
+          { label: "给你吹头发", type: "instant" },
+          { label: "喝一杯喜欢的饮料", type: "instant" },
+          { label: "明天刮一张彩票", type: "instant" },
+          { label: "看一集喜欢的电视剧", type: "instant" },
+          { label: "小礼物选择权，我买单（小额）", type: "instant" },
+          { label: "实现一个小小愿望", type: "instant" }
+        ],
+        modal: {
+          image: "assets/hello-kitty.png",
+          alt: "粉色背景中的 Hello Kitty 卡通形象",
+          title: "朱子怡，今天也要闪闪发光",
+          message: "Hello Kitty 已经来给你加油啦，完成三项小目标就去领取奖励吧！"
+        }
+      },
       "小王": {
-        type: "instant",
         tasks: [
-          "练习 20 分钟代码编程",
+          "练习 20分钟 代码编程",
           "完成一道 NumPy 数组题",
           "阅读 15 分钟机器学习代码",
           "写一个带 if 判断的小程序",
@@ -160,110 +673,308 @@
           "整理复盘当天的工作内容",
           "锻炼或散步 20 分钟"
         ],
-        rewards: ["喝一杯喜欢的饮料", "玩 30 分钟游戏", "吃一顿好吃的", "健身日可任意休息一次"]
-      },
-      "小朱子怡": {
-        type: "points",
-        pointsPerTask: 10,
-        tasks: [
-          "背诵 60 个英语单词",
-          "完成今天的做饭目标",
-          "完成一题数学或编程练习",
-          "整理复盘当天的工作内容",
-          "锻炼或散步 20 分钟"
-        ]
+        rewards: [
+          { label: "喝一杯喜欢的饮料", type: "instant" },
+          { label: "玩 30 分钟游戏", type: "instant" },
+          { label: "吃一顿好吃的", type: "instant" },
+          { label: "健身日可任意休息一次", type: "instant" },
+          { label: "积分奖励30分", type: "points", value: 30 }
+        ],
+        modal: {
+          image: "assets/yier-bubu.png",
+          alt: "一二和布布一起挥手的卡通形象",
+          title: "小王，和一二布布一起出发",
+          message: "今天的三项小目标已经准备好，慢慢完成也很棒！"
+        }
       }
     };
 
-    const storeKey = "daily-task-mobile-points-v1";
-    let activePlan = null;
-    let scored = false;
-
+    const stateKey = "daily-task-mobile-state-v3";
+    const pointsKey = "daily-task-mobile-points-v1";
     const $ = (id) => document.getElementById(id);
-    const choose = (items, count = 1) => [...items].sort(() => Math.random() - 0.5).slice(0, count);
+    let activePlan = null;
+    let selectedName = null;
+    let isDrawing = false;
+    let modalTimer = null;
+
+    function shuffled(items) {
+      const copy = [...items];
+      for (let index = copy.length - 1; index > 0; index -= 1) {
+        const target = Math.floor(Math.random() * (index + 1));
+        [copy[index], copy[target]] = [copy[target], copy[index]];
+      }
+      return copy;
+    }
+
+    function chooseOne(items) {
+      return items[Math.floor(Math.random() * items.length)];
+    }
+
+    function getTasks(person) {
+      if (person.tasks) return shuffled(person.tasks).slice(0, 3);
+
+      const groups = Object.values(person.taskGroups).filter((group) => group.length);
+      const selected = groups.map((group) => chooseOne(group));
+      const allTasks = groups.flat();
+      const remaining = shuffled(allTasks.filter((task) => !selected.includes(task)));
+      return shuffled([...selected, ...remaining.slice(0, 3 - selected.length)]).slice(0, 3);
+    }
 
     function getPoints() {
-      try { return JSON.parse(localStorage.getItem(storeKey)) || {}; }
-      catch { return {}; }
+      try {
+        const saved = JSON.parse(localStorage.getItem(pointsKey));
+        return saved && typeof saved === "object" ? saved : {};
+      } catch {
+        return {};
+      }
     }
 
     function savePoints(points) {
-      localStorage.setItem(storeKey, JSON.stringify(points));
+      localStorage.setItem(pointsKey, JSON.stringify(points));
     }
 
-    function renderTasks(tasks) {
-      $("tasks").innerHTML = "";
-      tasks.forEach((task, index) => {
+    function saveState() {
+      localStorage.setItem(stateKey, JSON.stringify({ selectedName, plan: activePlan }));
+    }
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(stateKey));
+        if (!saved || !people[saved.selectedName]) return;
+        selectedName = saved.selectedName;
+
+        const plan = saved.plan;
+        const validPlan = plan
+          && people[plan.name]
+          && Array.isArray(plan.tasks)
+          && plan.tasks.length === 3
+          && Array.isArray(plan.completed)
+          && plan.completed.length === 3
+          && plan.reward
+          && typeof plan.reward.label === "string";
+
+        if (validPlan) activePlan = plan;
+      } catch {
+        localStorage.removeItem(stateKey);
+      }
+    }
+
+    function renderSelection() {
+      document.querySelectorAll(".person-option").forEach((button) => {
+        button.setAttribute("aria-checked", String(button.dataset.person === selectedName));
+      });
+    }
+
+    function updateProgress() {
+      if (!activePlan) return;
+      const completed = activePlan.completed.filter(Boolean).length;
+      $("progressText").textContent = `已完成 ${completed} / 3`;
+      $("progressBar").style.width = `${completed / 3 * 100}%`;
+    }
+
+    function renderTasks() {
+      $("tasks").replaceChildren();
+
+      activePlan.tasks.forEach((task, index) => {
         const label = document.createElement("label");
-        label.className = "task";
-        label.innerHTML = `<input type="checkbox" data-task="${index}"><span>${index + 1}. ${task}</span>`;
+        label.className = `task${activePlan.completed[index] ? " is-complete" : ""}`;
+
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.checked = Boolean(activePlan.completed[index]);
+        input.disabled = Boolean(activePlan.rewardClaimed);
+        input.setAttribute("aria-label", `完成任务：${task}`);
+        input.addEventListener("change", () => {
+          activePlan.completed[index] = input.checked;
+          label.classList.toggle("is-complete", input.checked);
+          updateProgress();
+          saveState();
+          $("status").textContent = input.checked ? "已记录一项完成进度。" : "已取消这项完成记录。";
+        });
+
+        const text = document.createElement("span");
+        text.className = "task-text";
+        text.textContent = `${index + 1}. ${task}`;
+        label.append(input, text);
         $("tasks").appendChild(label);
       });
     }
 
-    function drawPlan() {
-      const name = choose(Object.keys(people))[0];
-      const person = people[name];
-      activePlan = { name, person, tasks: choose(person.tasks, 3) };
-      scored = false;
+    function renderReward() {
+      const reward = activePlan.reward;
+      const claimed = Boolean(activePlan.rewardClaimed);
+      const isPoints = reward.type === "points";
 
-      $("personName").textContent = name;
-      $("planCard").classList.remove("hidden");
-      $("status").textContent = "";
-      renderTasks(activePlan.tasks);
-
-      const isPoints = person.type === "points";
       $("rewardBadge").textContent = isPoints ? "积分奖励" : "即时奖励";
       $("rewardBadge").className = `badge ${isPoints ? "points" : "instant"}`;
-      $("pointsPanel").classList.toggle("hidden", !isPoints);
-      $("instantPanel").classList.toggle("hidden", isPoints);
+      $("rewardText").textContent = `全部完成后，可以获得：${reward.label}。`;
+      $("rewardCard").classList.toggle("is-claimed", claimed);
+      $("rewardState").textContent = claimed ? "✓ 已领取" : "待领取";
+      $("claimButton").disabled = claimed;
+      $("claimButton").textContent = claimed ? "奖励已领取" : "我已完成三项任务，领取奖励";
 
+      $("pointsInfo").classList.toggle("hidden", !isPoints);
       if (isPoints) {
-        const current = getPoints()[name] || 0;
-        $("pointsNumber").textContent = `${current} 分`;
-        $("rewardText").textContent = `每完成 1 项任务获得 ${person.pointsPerTask} 积分；累计到 100 分可兑换一次周末自由活动。`;
-        $("scoreButton").disabled = false;
-        $("scoreButton").textContent = "按已完成任务计算积分";
-      } else {
-        activePlan.reward = choose(person.rewards)[0];
-        $("rewardText").textContent = `全部完成后，可以获得：${activePlan.reward}。`;
-        $("claimButton").disabled = false;
-        $("claimButton").textContent = "我已完成三项任务，领取奖励";
+        const points = getPoints();
+        $("pointsNumber").textContent = `${points[activePlan.name] || 0} 分`;
       }
-
-      $("planCard").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
-    function scorePlan() {
-      if (scored || !activePlan) return;
-      const completed = document.querySelectorAll("[data-task]:checked").length;
-      const earned = completed * activePlan.person.pointsPerTask;
-      const points = getPoints();
-      const total = (points[activePlan.name] || 0) + earned;
-      points[activePlan.name] = total;
-      savePoints(points);
-      scored = true;
+    function animatePlanCard() {
+      const card = $("planCard");
+      card.classList.remove("plan-enter");
+      void card.offsetWidth;
+      card.classList.add("plan-enter");
+    }
 
-      $("pointsNumber").textContent = `${total} 分`;
-      $("scoreButton").disabled = true;
-      $("status").textContent = `本次完成 ${completed} 项，获得 ${earned} 积分；当前累计 ${total} 分。`;
+    function renderPlan({ animate = false, scroll = false } = {}) {
+      if (!activePlan) return;
+      selectedName = activePlan.name;
+      renderSelection();
+      $("personName").textContent = activePlan.name;
+      $("planCard").classList.remove("hidden");
+      renderTasks();
+      renderReward();
+      updateProgress();
+
+      if (activePlan.rewardClaimed) {
+        $("status").textContent = `今天的三项任务已经完成，${activePlan.name} 的奖励已领取。`;
+      } else {
+        $("status").textContent = "完成三项任务后即可领取奖励。";
+      }
+
+      if (animate) animatePlanCard();
+      if (scroll) $("planCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function showCharacterModal(name) {
+      const config = people[name]?.modal;
+      if (!config) return;
+
+      window.clearTimeout(modalTimer);
+      $("modalImage").src = config.image;
+      $("modalImage").alt = config.alt;
+      $("modalTitle").textContent = config.title;
+      $("modalMessage").textContent = config.message;
+      $("characterModal").classList.remove("hidden");
+      $("characterModal").setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+
+      requestAnimationFrame(() => {
+        $("characterModal").classList.add("is-open");
+        $("modalClose").focus();
+      });
+    }
+
+    function closeCharacterModal() {
+      if ($("characterModal").classList.contains("hidden")) return;
+      $("characterModal").classList.remove("is-open");
+      $("characterModal").setAttribute("aria-hidden", "true");
+      document.body.classList.remove("modal-open");
+      modalTimer = window.setTimeout(() => $("characterModal").classList.add("hidden"), 240);
+    }
+
+    function createPlan(name, { showModal = true, scroll = true } = {}) {
+      const person = people[name];
+      selectedName = name;
+      activePlan = {
+        name,
+        tasks: getTasks(person),
+        completed: [false, false, false],
+        reward: chooseOne(person.rewards),
+        rewardClaimed: false,
+        createdAt: new Date().toISOString()
+      };
+
+      saveState();
+      renderPlan({ animate: true, scroll });
+      if (showModal) showCharacterModal(name);
+    }
+
+    function setLoading(loading) {
+      isDrawing = loading;
+      $("drawButton").disabled = loading;
+      $("drawButton").classList.toggle("is-loading", loading);
+      $("drawButton").querySelector(".button-label").textContent = loading
+        ? "正在抽取任务主人..."
+        : "随机抽取任务主人";
+    }
+
+    async function drawRandomPlan() {
+      if (isDrawing) return;
+      setLoading(true);
+      await new Promise((resolve) => window.setTimeout(resolve, 700));
+      const name = chooseOne(Object.keys(people));
+      setLoading(false);
+      createPlan(name);
     }
 
     function claimReward() {
-      if (!activePlan) return;
-      const completed = document.querySelectorAll("[data-task]:checked").length;
+      if (!activePlan || activePlan.rewardClaimed) return;
+      const completed = activePlan.completed.filter(Boolean).length;
+
       if (completed < 3) {
         $("status").textContent = `已完成 ${completed} 项，再完成 ${3 - completed} 项就能领取奖励。`;
+        $("tasks").querySelector(`input:not(:checked)`)?.focus();
         return;
       }
-      $("claimButton").disabled = true;
-      $("status").textContent = `恭喜 ${activePlan.name}！请领取奖励：${activePlan.reward}。`;
+
+      const reward = activePlan.reward;
+      if (reward.type === "points") {
+        const points = getPoints();
+        points[activePlan.name] = (points[activePlan.name] || 0) + reward.value;
+        savePoints(points);
+      }
+
+      activePlan.rewardClaimed = true;
+      saveState();
+      renderTasks();
+      renderReward();
+      $("status").textContent = `恭喜 ${activePlan.name}！奖励“${reward.label}”已经领取。`;
+      $("rewardCard").classList.remove("reward-pop");
+      void $("rewardCard").offsetWidth;
+      $("rewardCard").classList.add("reward-pop");
     }
 
-    $("drawButton").addEventListener("click", drawPlan);
-    $("redrawButton").addEventListener("click", drawPlan);
-    $("scoreButton").addEventListener("click", scorePlan);
+    function resetToday() {
+      localStorage.removeItem(stateKey);
+      activePlan = null;
+      selectedName = null;
+      renderSelection();
+      closeCharacterModal();
+      $("planCard").classList.add("hidden");
+      $("tasks").replaceChildren();
+      $("status").textContent = "";
+      $("drawButton").focus();
+    }
+
+    document.querySelectorAll(".person-option").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (!isDrawing) createPlan(button.dataset.person);
+      });
+    });
+
+    $("drawButton").addEventListener("click", drawRandomPlan);
+    $("redrawButton").addEventListener("click", drawRandomPlan);
     $("claimButton").addEventListener("click", claimReward);
+    $("resetButton").addEventListener("click", resetToday);
+    $("modalClose").addEventListener("click", closeCharacterModal);
+    $("characterModal").addEventListener("click", (event) => {
+      if (event.target === $("characterModal")) closeCharacterModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeCharacterModal();
+    });
+
+    $("todayLabel").textContent = new Intl.DateTimeFormat("zh-CN", {
+      month: "long",
+      day: "numeric",
+      weekday: "long"
+    }).format(new Date());
+
+    loadState();
+    renderSelection();
+    if (activePlan) renderPlan();
   </script>
 </body>
 </html>
