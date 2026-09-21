@@ -140,7 +140,8 @@
         halo.addColorStop(1, 'rgba(255, 94, 174, 0)');
         context.fillStyle = halo; context.fillRect(0, 0, width, height);
 
-        if (!dragging && !reduceMotion) targetY += .00125;
+        // Keep the heart mostly front-facing while still giving it a gentle 3D sway.
+        if (!dragging && !reduceMotion) targetY = .24 + Math.sin(seconds * .38) * .42;
         rotationY += (targetY - rotationY) * .075;
         rotationX += (targetX - rotationX) * .075;
         const sinY = Math.sin(rotationY), cosY = Math.cos(rotationY);
