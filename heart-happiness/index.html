@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#13061f" />
+  <meta name="description" content="一个可以用手指拖动的 3D 爱心网页。" />
+  <title>天天开心</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23ff5a87' d='M32 56S6 40 6 20C6 11 13 6 21 6c6 0 10 4 11 8 1-4 5-8 11-8 8 0 15 5 15 14 0 20-26 36-26 36Z'/%3E%3C/svg%3E" />
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      overflow: hidden;
+      color: #fff7fb;
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: radial-gradient(circle at 50% 24%, #3a123f 0, #180827 42%, #090515 100%);
+    }
+    #heartCanvas { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; }
+    .grain {
+      position: fixed; inset: 0; pointer-events: none; opacity: .1;
+      background-image: radial-gradient(rgba(255,255,255,.55) .55px, transparent .55px);
+      background-size: 5px 5px; mix-blend-mode: soft-light;
+    }
+    main {
+      position: relative; z-index: 1; min-height: 100dvh; display: grid;
+      grid-template-rows: auto 1fr auto; padding: max(26px, env(safe-area-inset-top)) 24px max(25px, env(safe-area-inset-bottom));
+      pointer-events: none;
+    }
+    header, .bottom { text-align: center; text-shadow: 0 3px 18px rgba(0,0,0,.36); }
+    .eyebrow { margin: 0 0 8px; color: #ffc7d8; font-size: .8rem; letter-spacing: .2em; }
+    h1 { margin: 0; font-size: clamp(2rem, 9vw, 4rem); letter-spacing: .14em; font-weight: 760; }
+    .subtitle { margin: 11px 0 0; color: #f7d9e5; font-size: .98rem; line-height: 1.65; }
+    .bottom { align-self: end; display: grid; gap: 15px; justify-items: center; }
+    #wish {
+      min-height: 1.55em; margin: 0; max-width: 22rem; color: #fff0f6; font-size: 1rem;
+      line-height: 1.65; transition: opacity .28s ease, transform .28s ease;
+    }
+    button {
+      pointer-events: auto; border: 1px solid rgba(255,255,255,.42); border-radius: 999px;
+      padding: 14px 22px; min-height: 48px; color: #fff; font: inherit; font-weight: 650;
+      background: linear-gradient(135deg, rgba(255,126,165,.78), rgba(170,97,255,.7));
+      box-shadow: 0 10px 30px rgba(255,61,132,.24), inset 0 1px rgba(255,255,255,.34);
+      transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+    button:active { transform: scale(.96); box-shadow: 0 5px 18px rgba(255,61,132,.24); }
+    .tip { margin: 0; color: rgba(255,237,246,.78); font-size: .78rem; }
+    @media (min-width: 700px) { main { padding-left: 48px; padding-right: 48px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+  </style>
+</head>
+<body>
+  <canvas id="heartCanvas" aria-label="可拖动旋转的三维爱心动画"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+  <main>
+    <header>
+      <p class="eyebrow">A LITTLE WISH FOR YOU</p>
+      <h1>天天开心</h1>
+      <p class="subtitle">愿每一个平凡的日子，都有值得期待的小确幸。</p>
+    </header>
+    <div aria-hidden="true"></div>
+    <section class="bottom" aria-label="祝福互动">
+      <p id="wish" role="status">把烦恼交给风，把快乐留给今天。</p>
+      <button id="wishButton" type="button">点一下，收下今天的好运</button>
+      <p class="tip">手指拖动爱心，可以旋转观看</p>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const canvas = document.querySelector('#heartCanvas');
+      const context = canvas.getContext('2d');
+      const button = document.querySelector('#wishButton');
+      const wish = document.querySelector('#wish');
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const wishes = [
+        '把烦恼交给风，把快乐留给今天。',
+        '愿你眼里有光，心里有暖，脚下有路。',
+        '今天也请好好吃饭，好好睡觉，好好爱自己。',
+        '愿你的努力都有回音，愿你的日子闪闪发亮。',
+        '无需赶路，沿途的花也值得停下来看看。'
+      ];
+      let width = 0, height = 0, pixelRatio = 1;
+      let rotationY = 0.24, rotationX = -0.14, targetY = rotationY, targetX = rotationX;
+      let dragging = false, lastX = 0, lastY = 0, burst = 0, lastTime = 0;
+
+      const stars = Array.from({ length: 150 }, () => ({
+        x: Math.random(), y: Math.random(), size: Math.random() * 1.5 + .35,
+        alpha: Math.random() * .6 + .16, speed: Math.random() * .7 + .25
+      }));
+      const orbiters = Array.from({ length: 150 }, () => ({
+        angle: Math.random() * Math.PI * 2, radius: 13 + Math.random() * 19,
+        tilt: (Math.random() - .5) * .75, speed: .16 + Math.random() * .4,
+        phase: Math.random() * Math.PI * 2, size: .45 + Math.random() * 1.35
+      }));
+
+      // Independent particle-based heart geometry. It does not reuse the referenced project's files.
+      const particles = Array.from({ length: 1700 }, (_, index) => {
+        const t = Math.random() * Math.PI * 2;
+        const edge = Math.random() < .36;
+        const scale = edge ? .91 + Math.random() * .09 : Math.pow(Math.random(), .52);
+        const x = scale * 16 * Math.pow(Math.sin(t), 3);
+        const y = scale * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+        const z = (Math.random() - .5) * 13 * (1 - scale * .22);
+        return { x, y: -y, z, seed: Math.random() * Math.PI * 2, size: Math.random() * 1.9 + .62, glow: Math.random(), index };
+      });
+
+      function resize() {
+        pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = Math.round(width * pixelRatio);
+        canvas.height = Math.round(height * pixelRatio);
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+        context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      }
+
+      function draw(time) {
+        const seconds = time * .001;
+        const pulse = 1 + Math.pow((Math.sin(seconds * 2.25) + 1) / 2, 5) * .105 + burst * .13;
+        context.clearRect(0, 0, width, height);
+        const sky = context.createRadialGradient(width * .5, height * .46, 20, width * .5, height * .5, Math.max(width, height) * .72);
+        sky.addColorStop(0, 'rgba(168, 37, 125, .26)');
+        sky.addColorStop(1, 'rgba(3, 2, 15, .06)');
+        context.fillStyle = sky;
+        context.fillRect(0, 0, width, height);
+
+        stars.forEach((star) => {
+          const a = star.alpha * (.62 + Math.sin(seconds * star.speed + star.x * 16) * .38);
+          context.fillStyle = `rgba(255,224,241,${a})`;
+          context.beginPath(); context.arc(star.x * width, star.y * height, star.size, 0, Math.PI * 2); context.fill();
+        });
+
+        const halo = context.createRadialGradient(width * .5, height * .49, 8, width * .5, height * .49, Math.min(width, height) * .39);
+        halo.addColorStop(0, `rgba(255, 91, 168, ${.25 + burst * .2})`);
+        halo.addColorStop(.42, `rgba(182, 88, 255, ${.11 + burst * .06})`);
+        halo.addColorStop(1, 'rgba(255, 94, 174, 0)');
+        context.fillStyle = halo; context.fillRect(0, 0, width, height);
+
+        if (!dragging && !reduceMotion) targetY += .00125;
+        rotationY += (targetY - rotationY) * .075;
+        rotationX += (targetX - rotationX) * .075;
+        const sinY = Math.sin(rotationY), cosY = Math.cos(rotationY);
+        const sinX = Math.sin(rotationX), cosX = Math.cos(rotationX);
+        const unit = Math.min(width, height) * .024;
+        const cx = width * .5, cy = height * .49;
+
+        context.save();
+        context.translate(cx, cy);
+        context.lineWidth = 1;
+        for (let i = 0; i < 3; i++) {
+          context.strokeStyle = `hsla(${318 + i * 30}, 100%, 74%, ${.14 - i * .025})`;
+          context.beginPath();
+          context.ellipse(0, 0, unit * (23 + i * 3), unit * (7 + i * 1.4), rotationY * .75 + i * .55, 0, Math.PI * 2);
+          context.stroke();
+        }
+        context.restore();
+
+        context.globalCompositeOperation = 'lighter';
+        orbiters.forEach((o) => {
+          const angle = o.angle + seconds * o.speed;
+          const ox = Math.cos(angle) * o.radius * unit;
+          const oy = Math.sin(angle) * o.radius * .32 * unit * Math.cos(o.tilt + rotationX);
+          const az = Math.sin(angle) * o.radius;
+          const opacity = .16 + Math.max(0, az + 15) / 72;
+          context.fillStyle = `hsla(${40 + ((o.phase * 90) % 290)}, 100%, 78%, ${opacity})`;
+          context.beginPath(); context.arc(cx + ox, cy + oy, o.size * (1 + Math.max(0, az) / 42), 0, Math.PI * 2); context.fill();
+        });
+        const rendered = [];
+        particles.forEach((p) => {
+          const wobble = reduceMotion ? 0 : Math.sin(seconds * 2.6 + p.seed) * .18;
+          const px = p.x * pulse;
+          const py = p.y * pulse + wobble;
+          const pz = p.z * pulse;
+          const x1 = px * cosY - pz * sinY;
+          const z1 = px * sinY + pz * cosY;
+          const y1 = py * cosX - z1 * sinX;
+          const z2 = py * sinX + z1 * cosX;
+          const depth = 330 / (330 - z2 * 2.5);
+          rendered.push({ x: cx + x1 * unit * depth, y: cy + y1 * unit * depth, z: z2, s: p.size * depth, hue: 318 + (z2 + 10) * 2.15, glow: p.glow });
+        });
+        rendered.sort((a, b) => a.z - b.z);
+        context.globalCompositeOperation = 'lighter';
+        rendered.forEach((p) => {
+          const alpha = .3 + Math.max(0, p.z + 11) / 33;
+          context.fillStyle = `hsla(${p.hue}, 100%, ${70 + p.glow * 18}%, ${alpha})`;
+          context.beginPath(); context.arc(p.x, p.y, Math.max(.48, p.s), 0, Math.PI * 2); context.fill();
+          if (p.glow > .88 && p.z > 0) {
+            context.fillStyle = `rgba(255, 241, 218, ${alpha * .55})`;
+            context.beginPath(); context.arc(p.x, p.y, p.s * 2.3, 0, Math.PI * 2); context.fill();
+          }
+        });
+        context.globalCompositeOperation = 'source-over';
+        if (burst > .002) burst *= .9; else burst = 0;
+        lastTime = time;
+        requestAnimationFrame(draw);
+      }
+
+      function pointStart(x, y) { dragging = true; lastX = x; lastY = y; }
+      function pointMove(x, y) {
+        if (!dragging) return;
+        targetY += (x - lastX) * .012;
+        targetX = Math.max(-.7, Math.min(.7, targetX + (y - lastY) * .009));
+        lastX = x; lastY = y;
+      }
+      canvas.addEventListener('pointerdown', (event) => { canvas.setPointerCapture(event.pointerId); pointStart(event.clientX, event.clientY); });
+      canvas.addEventListener('pointermove', (event) => pointMove(event.clientX, event.clientY));
+      canvas.addEventListener('pointerup', () => { dragging = false; });
+      canvas.addEventListener('pointercancel', () => { dragging = false; });
+      button.addEventListener('click', () => {
+        const current = wish.textContent;
+        let next = current;
+        while (next === current) next = wishes[Math.floor(Math.random() * wishes.length)];
+        wish.style.opacity = '0'; wish.style.transform = 'translateY(6px)';
+        window.setTimeout(() => { wish.textContent = next; wish.style.opacity = '1'; wish.style.transform = 'translateY(0)'; }, 170);
+        burst = 1;
+      });
+      window.addEventListener('resize', resize);
+      resize();
+      requestAnimationFrame(draw);
+    })();
+  </script>
+</body>
+</html>
